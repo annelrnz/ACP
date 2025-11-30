@@ -38,20 +38,18 @@ def init_db():
         )
     ''')
     
-   
     try:
-
         sample_students = [
-        ('24-02453', 'John Doe', 'CPE405', 'A', 'Block 1', 'john.doe@example.com'),
-        ('24-02454', 'Jane Smith', 'CPE405', 'A', 'Block 1', 'jane.smith@example.com'),
-        ('24-02455', 'Mike Johnson', 'IT2104', 'B', 'Block 2', 'mike.johnson@example.com')
-    ]
+            ('24-02453', 'John Doe', 'CPE405', 'A', 'Block 1', 'john.doe@example.com'),
+            ('24-02454', 'Jane Smith', 'CPE405', 'A', 'Block 1', 'jane.smith@example.com'),
+            ('24-02455', 'Mike Johnson', 'IT2104', 'B', 'Block 2', 'mike.johnson@example.com')
+        ]
         for student in sample_students:
             cursor.execute('''
-            INSERT OR IGNORE INTO students 
-            (student_id, name, course, section, block, gsuite) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', student)
+                INSERT OR IGNORE INTO students 
+                (student_id, name, course, section, block, gsuite) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', student)
         
         conn.commit()
         print("✅ Database initialized with sample data!")
@@ -63,3 +61,62 @@ def init_db():
 def get_connection():
     """Get database connection"""
     return sqlite3.connect('attendify.db')
+
+def check_student(student_id):
+    """Check if student exists in database"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT student_id, name, course, section, block, gsuite 
+        FROM students 
+        WHERE student_id = ?
+    ''', (student_id,))
+    
+    student = cursor.fetchone()
+    conn.close()
+    
+    if student:
+        return {
+            'registered': True,
+            'student_id': student[0],
+            'name': student[1],
+            'course': student[2],
+            'section': student[3],
+            'block': student[4],
+            'gsuite': student[5]
+        }
+    else:
+        return {
+            'registered': False,
+            'message': 'SR Code not found. Are you registered in this section? Something went wrong? Contact your professor.'
+        }
+
+def record_attendance(student_id, course_code, class_time):
+    """Record attendance for a student"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # First check if student exists
+    cursor.execute('SELECT section FROM students WHERE student_id = ?', (student_id,))
+    student = cursor.fetchone()
+    
+    if not student:
+        conn.close()
+        return {'success': False, 'message': 'SR Code not found. Please contact your professor.'}
+    
+    section = student[0]
+    
+    try:
+        cursor.execute('''
+            INSERT INTO attendance_records 
+            (student_id, course_code, section, class_time) 
+            VALUES (?, ?, ?, ?)
+        ''', (student_id, course_code, section, class_time))
+        
+        conn.commit()
+        conn.close()
+        return {'success': True, 'message': 'Attendance recorded successfully!'}
+    except Exception as e:
+        conn.close()
+        return {'success': False, 'message': f'Error recording attendance: {str(e)}'}

@@ -176,7 +176,7 @@ class ProfessorApp:
             (gsuite_account, "Gsuite Account")
         ]
         
-        # Dapat walang field ang blanko
+        # Dapat walang field na blank
         for value, field_name in fields_to_check:
             if not value:
                # Lalabas ito kapag may hindi nilagyan na field
@@ -279,18 +279,22 @@ class ProfessorApp:
         course_combo = ttk.Combobox(form_frame, width=20)
         course_combo.grid(row=1, column=1, pady=8, padx=(10, 0))
         
-        # Get unique courses from students
         courses = self.get_all_courses()
         course_combo['values'] = courses
         if courses:
             course_combo.set(courses[0])
         
         ttk.Label(form_frame, text="Course Title:").grid(row=2, column=0, sticky=tk.W, pady=8)
-        course_title_entry = ttk.Entry(form_frame, width=20)
+        course_title_entry = ttk.Combobox(form_frame, width=20)
         course_title_entry.grid(row=2, column=1, pady=8, padx=(10, 0))
-        course_title_entry.insert(0, "Discrete Mathematics")  # Default
-        course_title_entry.insert(1, "Advanced Computer Programming")  # Default
-        course_title_entry.insert(2, "Object Oriented Programming")  # Default
+        course_title_entry.insert(0, "Discrete Mathematics") 
+        course_title_entry.insert(1, "Advanced Computer Programming") 
+        course_title_entry.insert(2, "Object Oriented Programming") 
+        course_title_entry.insert(3, "Computer Networking 1") 
+        course_title_entry.insert(4, "Calculus-Based Physics") 
+        course_title_entry.insert(5, "Asean Literature")
+        course_title_entry.insert(6, "PathFit-3")  
+        course_title_entry.insert(7, "Database Management Systems") 
         
         ttk.Label(form_frame, text="Class Time:").grid(row=3, column=0, sticky=tk.W, pady=8)
         class_time_entry = ttk.Entry(form_frame, width=20)

@@ -390,12 +390,14 @@
                     document.getElementById('studentName').textContent = data.name;
                     document.getElementById('attendanceForm').classList.remove('hidden');
                     document.getElementById('registrationForm').classList.add('hidden');
+                    hideMessage();
                 } else {
-                    document.getElementById('formStudentId').value = studentId;
-                    document.getElementById('registrationForm').classList.remove('hidden');
+                    // Instead of showing registration form, show error message
+                    showMessage('SR Code not found. Are you registered in this section?<br>Something went wrong? Contact your professor.', 'error');
+                    // Hide both forms
+                    document.getElementById('registrationForm').classList.add('hidden');
                     document.getElementById('attendanceForm').classList.add('hidden');
                 }
-                hideMessage();
                 
             } catch (error) {
                 showMessage('Error checking student: ' + error, 'error');

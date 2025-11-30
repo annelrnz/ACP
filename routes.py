@@ -121,7 +121,6 @@ def setup_routes(app):
         section = request.form.get('section')
         class_time = request.form.get('class_time')
         
-        # Check if student exists
         student = Student.get_student_by_id(student_id)
         if not student:
             return "Error: Student ID not found", 400
