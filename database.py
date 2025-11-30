@@ -38,13 +38,20 @@ def init_db():
         )
     ''')
     
-    # Insert some sample data for testing
+   
     try:
-        cursor.execute('''
+
+        sample_students = [
+        ('24-02453', 'John Doe', 'CPE405', 'A', 'Block 1', 'john.doe@example.com'),
+        ('24-02454', 'Jane Smith', 'CPE405', 'A', 'Block 1', 'jane.smith@example.com'),
+        ('24-02455', 'Mike Johnson', 'IT2104', 'B', 'Block 2', 'mike.johnson@example.com')
+    ]
+        for student in sample_students:
+            cursor.execute('''
             INSERT OR IGNORE INTO students 
             (student_id, name, course, section, block, gsuite) 
             VALUES (?, ?, ?, ?, ?, ?)
-        ''')
+        ''', student)
         
         conn.commit()
         print("✅ Database initialized with sample data!")

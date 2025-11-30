@@ -1,12 +1,80 @@
-# routes.py
 from flask import render_template, request, jsonify, redirect, url_for
-from models import Student, Attendance  # This should now work
+from models import Student, Attendance 
 
 def setup_routes(app):
     
     @app.route('/')
     def home():
         return render_template('index.html')
+    
+    @app.route('/check_student', methods=['POST'])
+    def check_student():
+        """Check if student is registered"""
+        data = request.get_json()
+        student_id = data.get('student_id')
+        
+        student = Student.get_student_by_id(student_id)
+        if student:
+            return jsonify({
+                'registered': True,
+                'name': student[2],  # name is at index 2
+                'student_id': student[1],
+                'course': student[3],
+                'section': student[4]
+            })
+        else:
+            return jsonify({'registered': False})
+    
+    @app.route('/register', methods=['POST'])
+    def register_student():
+        """Register a new student"""
+        try:
+            student_data = {
+                'student_id': request.form.get('student_id'),
+                'name': request.form.get('name'),
+                'course': request.form.get('course'),
+                'section': request.form.get('section'),
+                'block': request.form.get('block', ''),
+                'gsuite': request.form.get('gsuite', '')
+            }
+            
+            # Validate required fields
+            required_fields = ['student_id', 'name', 'course', 'section']
+            for field in required_fields:
+                if not student_data[field]:
+                    return jsonify({'success': False, 'message': f'Missing required field: {field}'})
+            
+            success, message = Student.create(student_data)
+            return jsonify({'success': success, 'message': message})
+            
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'Registration error: {str(e)}'})
+    
+    @app.route('/record_attendance', methods=['POST'])
+    def record_attendance():
+        """Record attendance for a student"""
+        try:
+            data = request.get_json()
+            student_id = data.get('student_id')
+            course_code = data.get('course_code')
+            class_time = data.get('class_time')
+            
+            if not all([student_id, course_code, class_time]):
+                return jsonify({'success': False, 'message': 'Missing required fields'})
+            
+            # Get student to determine section
+            student = Student.get_student_by_id(student_id)
+            if not student:
+                return jsonify({'success': False, 'message': 'Student not found'})
+            
+            section = student[4]  # section is at index 4
+            
+            # Mark attendance
+            success, message = Attendance.mark_attendance(student_id, course_code, section, class_time)
+            return jsonify({'success': success, 'message': message})
+            
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'Error recording attendance: {str(e)}'})
     
     @app.route('/attendance')
     def attendance_page():
