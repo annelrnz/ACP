@@ -1,4 +1,3 @@
-# database.py
 import sqlite3
 import os
 
@@ -40,9 +39,8 @@ def init_db():
     
     try:
         sample_students = [
-            ('24-02453', 'John Doe', 'CPE405', 'A', 'Block 1', 'john.doe@example.com'),
-            ('24-02454', 'Jane Smith', 'CPE405', 'A', 'Block 1', 'jane.smith@example.com'),
-            ('24-02455', 'Mike Johnson', 'IT2104', 'B', 'Block 2', 'mike.johnson@example.com')
+            ('24-02453', 'Franz Jacob Boñon', 'IT2104', 'B', 'Block 2', '24-02453@g.batstate-u.edu.ph'),
+            ('24-02686', 'Marianne Lorenzo', 'CPE405', 'A', 'Block 1', '24-02686@g.batstate-u.edu.ph'),
         ]
         for student in sample_students:
             cursor.execute('''

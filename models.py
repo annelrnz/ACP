@@ -1,199 +1,200 @@
-# models.py
+
 import sqlite3
-from database import get_connection
 from datetime import datetime
+from database import get_connection
 
 class Student:
     @staticmethod
-    def get_all_sections():
-        """Get all unique sections from database"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("SELECT DISTINCT section FROM students WHERE section IS NOT NULL AND section != '' ORDER BY section")
-            sections = [row[0] for row in cursor.fetchall()]
-            return sections
-        except Exception as e:
-            print(f"Error getting sections: {e}")
-            return []
-        finally:
-            conn.close()
-    
-    @staticmethod
-    def get_students_by_section(section):
-        """Get all students in a specific section"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("SELECT * FROM students WHERE section = ? ORDER BY name", (section,))
-            students = cursor.fetchall()
-            return students
-        except Exception as e:
-            print(f"Error getting students by section: {e}")
-            return []
-        finally:
-            conn.close()
-    
-    @staticmethod
-    def get_student_count_by_section(section):
-        """Get number of students in a section"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("SELECT COUNT(*) FROM students WHERE section = ?", (section,))
-            count = cursor.fetchone()[0]
-            return count
-        except Exception as e:
-            print(f"Error counting students: {e}")
-            return 0
-        finally:
-            conn.close()
-    
-    @staticmethod
     def create(student_data):
-        """Create new student with section"""
-        conn = get_connection()
-        cursor = conn.cursor()
+        """Create a new student record"""
         try:
-            # Make sure block has a default value if empty
-            block = student_data.get('block', '').strip()
-            if not block:
-                block = "N/A"
-                
+            conn = get_connection()
+            cursor = conn.cursor()
+            
             cursor.execute('''
-                INSERT INTO students (student_id, name, course, section, block, gsuite)
+                INSERT OR REPLACE INTO students 
+                (student_id, name, course, section, block, gsuite) 
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (
                 student_data['student_id'],
                 student_data['name'],
                 student_data['course'],
                 student_data['section'],
-                block,
-                student_data['gsuite']
+                student_data.get('block', ''),
+                student_data.get('gsuite', '')
             ))
+            
             conn.commit()
+            conn.close()
             return True, "Student added successfully!"
-        except sqlite3.IntegrityError:
-            return False, "Student ID already exists!"
         except Exception as e:
-            return False, f"Error: {str(e)}"
-        finally:
-            conn.close()
-    
-    @staticmethod
-    def get_all_courses():
-        """Get all unique courses from database"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("SELECT DISTINCT course FROM students WHERE course IS NOT NULL AND course != '' ORDER BY course")
-            courses = [row[0] for row in cursor.fetchall()]
-            return courses
-        except Exception as e:
-            print(f"Error getting courses: {e}")
-            return ["CPE405", "IT2104", "CS201"]  # Fallback
-        finally:
-            conn.close()
+            return False, f"Error adding student: {str(e)}"
     
     @staticmethod
     def get_student_by_id(student_id):
-        """Get student by ID"""
-        conn = get_connection()
-        cursor = conn.cursor()
+        """Get student by student_id"""
         try:
-            cursor.execute("SELECT * FROM students WHERE student_id = ?", (student_id,))
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT * FROM students WHERE student_id = ?
+            ''', (student_id,))
+            
             student = cursor.fetchone()
-            return student
-        except Exception as e:
-            print(f"Error getting student: {e}")
-            return None
-        finally:
             conn.close()
+            return student
+        except:
+            return None
     
     @staticmethod
-    def delete_student(student_id):
-        """Delete student by ID"""
-        conn = get_connection()
-        cursor = conn.cursor()
+    def get_students_by_section(section):
+        """Get all students in a section"""
         try:
-            cursor.execute("DELETE FROM students WHERE student_id = ?", (student_id,))
-            conn.commit()
-            return True, "Student deleted successfully!"
-        except Exception as e:
-            return False, f"Error deleting student: {str(e)}"
-        finally:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT * FROM students WHERE section = ? ORDER BY student_id
+            ''', (section,))
+            
+            students = cursor.fetchall()
             conn.close()
-
+            return students
+        except:
+            return []
+    
+    @staticmethod
+    def get_all_sections():
+        """Get all unique sections"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT DISTINCT section FROM students 
+                WHERE section IS NOT NULL AND section != '' 
+                ORDER BY section
+            ''')
+            
+            sections = [row[0] for row in cursor.fetchall()]
+            conn.close()
+            return sections
+        except:
+            return []
+    
+    @staticmethod
+    def get_student_count_by_section(section):
+        """Get number of students in a section"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT COUNT(*) FROM students WHERE section = ?
+            ''', (section,))
+            
+            count = cursor.fetchone()[0]
+            conn.close()
+            return count
+        except:
+            return 0
 
 class Attendance:
     @staticmethod
     def mark_attendance(student_id, course_code, section, class_time):
         """Mark attendance for a student"""
-        conn = get_connection()
-        cursor = conn.cursor()
         try:
-            # Check if attendance already marked for today
-            today = datetime.now().strftime('%Y-%m-%d')
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            # Check if attendance already recorded for today
+            today = datetime.now().date()
             cursor.execute('''
                 SELECT * FROM attendance_records 
-                WHERE student_id = ? AND course_code = ? AND section = ? AND date(timestamp) = ?
-            ''', (student_id, course_code, section, today))
+                WHERE student_id = ? AND course_code = ? AND DATE(timestamp) = ?
+            ''', (student_id, course_code, today))
             
-            if cursor.fetchone():
-                return False, "Attendance already marked for today"
+            existing = cursor.fetchone()
             
-            # Mark attendance
+            if existing:
+                conn.close()
+                return False, "Attendance already recorded for today"
+            
+            # Record attendance
             cursor.execute('''
-                INSERT INTO attendance_records (student_id, course_code, section, class_time)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO attendance_records 
+                (student_id, course_code, section, class_time, timestamp) 
+                VALUES (?, ?, ?, ?, datetime('now'))
             ''', (student_id, course_code, section, class_time))
             
             conn.commit()
-            return True, "Attendance marked successfully!"
-        except Exception as e:
-            return False, f"Error marking attendance: {str(e)}"
-        finally:
             conn.close()
+            return True, "Attendance recorded successfully!"
+        except Exception as e:
+            return False, f"Error: {str(e)}"
     
     @staticmethod
-    def get_today_attendance(section):
-        """Get today's attendance for a section"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        try:
-            today = datetime.now().strftime('%Y-%m-%d')
-            cursor.execute('''
-                SELECT ar.*, s.name 
-                FROM attendance_records ar
-                JOIN students s ON ar.student_id = s.student_id
-                WHERE ar.section = ? AND date(ar.timestamp) = ?
-                ORDER BY ar.timestamp
-            ''', (section, today))
-            
-            attendance = cursor.fetchall()
-            return attendance
-        except Exception as e:
-            print(f"Error getting attendance: {e}")
-            return []
-        finally:
-            conn.close()
-    
-    @staticmethod
-    def get_attendance_count(section):
+    def get_todays_attendance_by_section(section, course_code=None):
         """Get today's attendance count for a section"""
-        conn = get_connection()
-        cursor = conn.cursor()
         try:
-            today = datetime.now().strftime('%Y-%m-%d')
-            cursor.execute('''
-                SELECT COUNT(*) FROM attendance_records 
-                WHERE section = ? AND date(timestamp) = ?
-            ''', (section, today))
+            conn = get_connection()
+            cursor = conn.cursor()
             
+            today = datetime.now().date()
+            
+            if course_code:
+                query = '''
+                    SELECT COUNT(DISTINCT student_id) 
+                    FROM attendance_records 
+                    WHERE section = ? AND course_code = ? AND DATE(timestamp) = ?
+                '''
+                params = (section, course_code, today)
+            else:
+                query = '''
+                    SELECT COUNT(DISTINCT student_id) 
+                    FROM attendance_records 
+                    WHERE section = ? AND DATE(timestamp) = ?
+                '''
+                params = (section, today)
+            
+            cursor.execute(query, params)
             count = cursor.fetchone()[0]
-            return count
-        except Exception as e:
-            print(f"Error counting attendance: {e}")
-            return 0
-        finally:
             conn.close()
+            return count
+        except:
+            return 0
+    
+    @staticmethod
+    def get_attendance_records_by_section(section, date=None):
+        """Get all attendance records for a section"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            if date:
+                query = '''
+                    SELECT ar.*, s.name 
+                    FROM attendance_records ar
+                    JOIN students s ON ar.student_id = s.student_id
+                    WHERE ar.section = ? AND DATE(ar.timestamp) = ?
+                    ORDER BY ar.timestamp DESC
+                '''
+                params = (section, date)
+            else:
+                query = '''
+                    SELECT ar.*, s.name 
+                    FROM attendance_records ar
+                    JOIN students s ON ar.student_id = s.student_id
+                    WHERE ar.section = ?
+                    ORDER BY ar.timestamp DESC
+                '''
+                params = (section,)
+            
+            cursor.execute(query, params)
+            records = cursor.fetchall()
+            conn.close()
+            return records
+        except Exception as e:
+            print(f"Error getting attendance records: {e}")
+            return []

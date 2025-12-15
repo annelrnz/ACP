@@ -1,4 +1,5 @@
-from flask import render_template, request, jsonify, redirect, url_for
+from datetime import datetime  # FIXED: Use datetime instead of importing datetime module
+from flask import render_template, request, jsonify
 from models import Student, Attendance 
 
 def setup_routes(app):
@@ -120,25 +121,42 @@ def setup_routes(app):
         course_code = request.form.get('course_code')
         section = request.form.get('section')
         class_time = request.form.get('class_time')
-        
+   
         student = Student.get_student_by_id(student_id)
         if not student:
-            return "Error: Student ID not found", 400
-        
+            return "Error: Student ID not found. Please make sure you're registered in the professor system.", 400
+    
+        # Check if student belongs to this section
+        student_section = student[4] if len(student) > 4 else ""  
+        if student_section != section:
+            return f"Error: You are registered in section {student_section}, but this QR code is for section {section}", 400
+    
         # Mark attendance
         success, message = Attendance.mark_attendance(student_id, course_code, section, class_time)
         
         if success:
+            student_name = student[2] if len(student) > 2 else "Unknown"  # name is at index 2
             return f"""
             <html>
+                <head>
+                    <title>Attendance Confirmed</title>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; text-align: center; margin: 50px; }}
+                        .success {{ color: green; font-size: 24px; }}
+                        .info {{ background: #f0f0f0; padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 400px; }}
+                    </style>
+                </head>
                 <body>
-                    <div style="text-align: center; margin: 50px;">
-                        <h1>✅ Attendance Marked!</h1>
-                        <p>Student: {student[2]}</p>
-                        <p>Course: {course_code}</p>
-                        <p>Section: {section}</p>
-                        <a href="/attendance?course={course_code}&section={section}&time={class_time}">Back</a>
+                    <h1>✅ Attendance Marked Successfully!</h1>
+                    <div class="info">
+                        <p><strong>Student:</strong> {student_name}</p>
+                        <p><strong>Student ID:</strong> {student_id}</p>
+                        <p><strong>Course:</strong> {course_code}</p>
+                        <p><strong>Section:</strong> {section}</p>
+                        <p><strong>Time:</strong> {class_time}</p>
+                        <p><strong>Timestamp:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
                     </div>
+                    <p>You can close this window now.</p>
                 </body>
             </html>
             """
