@@ -41,122 +41,128 @@ class ProfessorApp:
         self.setup_treeview_bindings()
     
     def create_widgets(self):
-        #grid size
-        self.root.grid_columnconfigure(0, weight=1) 
-        self.root.grid_columnconfigure(1, weight=1) 
-        self.root.grid_rowconfigure(2, weight=1)
-
-        # Entry Frame (Left Side)
-        entry_frame = tk.Frame(self.root, bg="pink", padx=10, pady=10)
-        entry_frame.grid(row=0, column=0, sticky="nsew")
-
-        tk.Label(entry_frame, text="Enter Student Details:", font=("Arial", 12, "bold"), bg="pink").grid(row=0, column=0, columnspan=2, pady=(0, 10), sticky="w")
-
-        tk.Label(entry_frame, text="Student ID:", bg="pink").grid(row=1, column=0, sticky="w")
-        self.entry_id = tk.Entry(entry_frame, width=30)
-        self.entry_id.grid(row=1, column=1, pady=5, sticky="ew")
-
-        tk.Label(entry_frame, text="Name:", bg="pink").grid(row=2, column=0, sticky="w")
-        self.entry_name = tk.Entry(entry_frame, width=30)
-        self.entry_name.grid(row=2, column=1, pady=5, sticky="ew")
-
-        tk.Label(entry_frame, text="Program:", bg="pink").grid(row=3, column=0, sticky="w")
-        self.entry_program = tk.Entry(entry_frame, width=30)
-        self.entry_program.grid(row=3, column=1, pady=5, sticky="ew")
-
-        tk.Label(entry_frame, text="Block:", bg="pink").grid(row=4, column=0, sticky="w")
-        self.entry_block = tk.Entry(entry_frame, width=30)
-        self.entry_block.grid(row=4, column=1, pady=5, sticky="ew")
-
-        tk.Label(entry_frame, text="Gsuite Account:", bg="pink").grid(row=5, column=0, sticky="w")
-        self.entry_gsuite = tk.Entry(entry_frame, width=30)
-        self.entry_gsuite.grid(row=5, column=1, pady=5, sticky="ew")
-
+        # Configure main grid - 3 rows, 2 columns
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_columnconfigure(1, weight=1)
+        self.root.grid_rowconfigure(0, weight=0)  # Student details and buttons
+        self.root.grid_rowconfigure(1, weight=0)  # Statistics
+        self.root.grid_rowconfigure(2, weight=1)  # Student records list
+            
+        # ========== ROW 0: STUDENT DETAILS AND BUTTONS ==========
+        top_frame = tk.Frame(self.root, bg="pink", padx=10, pady=10)
+        top_frame.grid(row=0, column=0, columnspan=2, sticky="nsew")
+        
+        # Configure top frame grid
+        top_frame.columnconfigure(0, weight=2)  # Entry fields get more space
+        top_frame.columnconfigure(1, weight=1)  # Buttons get less space
+        top_frame.rowconfigure(0, weight=1)
+        
+        # Entry Frame (Left side)
+        entry_frame = tk.LabelFrame(top_frame, text="Student Details", font=("Arial", 10, "bold"), 
+                                bg="pink", padx=15, pady=15)
+        entry_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        
+        # Student entry fields - organized in a grid
+        tk.Label(entry_frame, text="Student ID:", bg="pink", font=("Arial", 9)).grid(row=0, column=0, sticky="w", pady=5)
+        self.entry_id = tk.Entry(entry_frame, width=25, font=("Arial", 9))
+        self.entry_id.grid(row=0, column=1, pady=5, padx=(5, 0), sticky="ew")
+        
+        tk.Label(entry_frame, text="Name:", bg="pink", font=("Arial", 9)).grid(row=1, column=0, sticky="w", pady=5)
+        self.entry_name = tk.Entry(entry_frame, width=25, font=("Arial", 9))
+        self.entry_name.grid(row=1, column=1, pady=5, padx=(5, 0), sticky="ew")
+        
+        tk.Label(entry_frame, text="Program:", bg="pink", font=("Arial", 9)).grid(row=2, column=0, sticky="w", pady=5)
+        self.entry_program = tk.Entry(entry_frame, width=25, font=("Arial", 9))
+        self.entry_program.grid(row=2, column=1, pady=5, padx=(5, 0), sticky="ew")
+        
+        tk.Label(entry_frame, text="Block:", bg="pink", font=("Arial", 9)).grid(row=3, column=0, sticky="w", pady=5)
+        self.entry_block = tk.Entry(entry_frame, width=25, font=("Arial", 9))
+        self.entry_block.grid(row=3, column=1, pady=5, padx=(5, 0), sticky="ew")
+        
+        tk.Label(entry_frame, text="Gsuite Account:", bg="pink", font=("Arial", 9)).grid(row=4, column=0, sticky="w", pady=5)
+        self.entry_gsuite = tk.Entry(entry_frame, width=25, font=("Arial", 9))
+        self.entry_gsuite.grid(row=4, column=1, pady=5, padx=(5, 0), sticky="ew")
+        
         entry_frame.grid_columnconfigure(1, weight=1)
-
-        # Button Frame (Right Side - Top)
-        button_frame = tk.Frame(self.root, bg="pink", padx=10, pady=10)
-        button_frame.grid(row=0, column=1, sticky="we")
-
-        # Section Management
-        tk.Label(button_frame, text="Section Management:", font=("Arial", 12, "bold"), bg="pink").grid(row=0, column=0, columnspan=2, pady=(0, 10), sticky="w")
-
-        tk.Label(button_frame, text="Section:", bg="pink").grid(row=1, column=0, sticky="w")
-        self.section_combo = ttk.Combobox(button_frame, textvariable=self.current_section, width=15)
-        self.section_combo.grid(row=1, column=1, pady=5, padx=(10, 0))
+        
+        # Button Frame (Right side)
+        button_frame = tk.LabelFrame(top_frame, text="Actions & Section", font=("Arial", 10, "bold"), 
+                                    bg="pink", padx=15, pady=15)
+        button_frame.grid(row=0, column=1, sticky="nsew")
+        
+        # Section Management at the top of button frame
+        tk.Label(button_frame, text="Section:", bg="pink", font=("Arial", 9)).pack(anchor="w", pady=(0, 5))
+        
+        self.section_combo = ttk.Combobox(button_frame, textvariable=self.current_section, width=22, font=("Arial", 9))
+        self.section_combo.pack(fill=tk.X, pady=(0, 10))
         self.section_combo.bind('<<ComboboxSelected>>', self.on_section_change)
         self.section_combo.bind('<KeyRelease>', self.on_section_type)
-
-        # Action Buttons
-        tk.Button(button_frame, text="ADD", font=("Arial", 10, "bold"), fg="black", bg="silver", width=10, command=self.add_student).grid(row=2, column=0, pady=5, padx=5, sticky="ew")
-        tk.Button(button_frame, text="UPDATE", font=("Arial", 10, "bold"), fg="black", bg="silver", width=10, command=self.update_student).grid(row=2, column=1, pady=5, padx=5, sticky="ew")
-        tk.Button(button_frame, text="VIEW", font=("Arial", 10, "bold"), fg="black", bg="silver", width=10, command=self.view_records).grid(row=3, column=0, pady=5, padx=5, sticky="ew")
-        tk.Button(button_frame, text="DELETE", font=("Arial", 10, "bold"), fg="black", bg="silver", width=10, command=self.delete_student).grid(row=3, column=1, pady=5, padx=5, sticky="ew")
         
-        tk.Button(button_frame, text="Refresh Sections", font=("Arial", 10, "bold"), fg="black", bg="silver", width=15, command=self.load_sections).grid(row=4, column=0, columnspan=2, pady=5, sticky="ew")
-        tk.Button(button_frame, text="Generate QR Code", font=("Arial", 10, "bold"), fg="black", bg="silver", width=15, command=self.generate_qr_code).grid(row=5, column=0, pady=5, sticky="ew")
-        tk.Button(button_frame, text="See QR Code", font=("Arial", 10, "bold"), fg="black", bg="silver", width=15, command=self.see_generated_qr).grid(row=5, column=1, pady=5, padx=(5, 0), sticky="ew")
-        tk.Button(button_frame, text="Refresh Attendance", font=("Arial", 10, "bold"), 
-          fg="black", bg="silver", width=15, 
-          command=self.refresh_attendance_status).grid(row=6, column=0, columnspan=2, pady=5, sticky="ew")
+        # Action Buttons Grid - 2 columns
+        button_grid = tk.Frame(button_frame, bg="pink")
+        button_grid.pack(fill=tk.BOTH, expand=True)
         
-        # New Warning Button
-        tk.Button(button_frame, text="⚠️ Check Inactive Students", font=("Arial", 10, "bold"), 
-                  fg="white", bg="#ff6b6b", width=20, 
-                  command=self.check_inactive_students).grid(row=7, column=0, columnspan=2, pady=10, sticky="ew")
+        # Column 1 buttons
+        tk.Button(button_grid, text="ADD", font=("Arial", 9, "bold"), fg="black", bg="silver", 
+                height=2, command=self.add_student).grid(row=0, column=0, padx=2, pady=2, sticky="nsew")
+        tk.Button(button_grid, text="UPDATE", font=("Arial", 9, "bold"), fg="black", bg="silver", 
+                height=2, command=self.update_student).grid(row=1, column=0, padx=2, pady=2, sticky="nsew")
+        tk.Button(button_grid, text="VIEW", font=("Arial", 9, "bold"), fg="black", bg="silver", 
+                height=2, command=self.view_records).grid(row=2, column=0, padx=2, pady=2, sticky="nsew")
+        tk.Button(button_grid, text="DELETE", font=("Arial", 9, "bold"), fg="black", bg="silver", 
+                height=2, command=self.delete_student).grid(row=3, column=0, padx=2, pady=2, sticky="nsew")
         
-        tk.Button(button_frame, text="📧 Email Settings", font=("Arial", 9), 
-                  fg="black", bg="lightgray", width=15,
-                  command=self.configure_email_settings).grid(row=8, column=0, columnspan=2, pady=5, sticky="ew")
-
-        button_frame.grid_columnconfigure(0, weight=1)
-        button_frame.grid_columnconfigure(1, weight=1)
-
-        # Title Label
-        tk.Label(self.root, text="Student Record", font=("Arial", 20, "bold"), bg="pink").grid(row=1, column=0, columnspan=1, pady=(20, 5))
-
-        # Middle Section - Statistics and QR Code
-        middle_frame = tk.Frame(self.root, bg="pink", padx=10, pady=10)
-        middle_frame.grid(row=2, column=0, columnspan=2, sticky="nsew")
+        # Column 2 buttons
+        tk.Button(button_grid, text="Refresh\nSections", font=("Arial", 9, "bold"), fg="black", bg="silver", 
+                height=2, command=self.load_sections).grid(row=0, column=1, padx=2, pady=2, sticky="nsew")
+        tk.Button(button_grid, text="Generate\nQR Code", font=("Arial", 9, "bold"), fg="black", bg="silver", 
+                height=2, command=self.generate_qr_code).grid(row=1, column=1, padx=2, pady=2, sticky="nsew")
+        tk.Button(button_grid, text="See QR\nCode", font=("Arial", 9, "bold"), fg="black", bg="silver", 
+                height=2, command=self.see_generated_qr).grid(row=2, column=1, padx=2, pady=2, sticky="nsew")
+        tk.Button(button_grid, text="Refresh\nAttendance", font=("Arial", 9, "bold"), fg="black", bg="silver", 
+                height=2, command=self.refresh_attendance_status).grid(row=3, column=1, padx=2, pady=2, sticky="nsew")
         
-        # Configure middle frame grid - give more space to QR code
-        middle_frame.columnconfigure(0, weight=2)
-        middle_frame.columnconfigure(1, weight=3)
-        middle_frame.rowconfigure(0, weight=1)
-
-        # Section Statistics (Left side of middle frame)
-        stats_frame = tk.LabelFrame(middle_frame, text="Section Statistics", font=("Arial", 10, "bold"), bg="pink", padx=10, pady=10)
-        stats_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
-
-        self.stats_label = tk.Label(stats_frame, text="Please select or type a section", font=("Arial", 11), bg="pink", justify=tk.LEFT)
-        self.stats_label.pack(expand=True, fill=tk.BOTH)
-
-        # QR Code Frame (Right side of middle frame)
-        qr_frame = tk.LabelFrame(middle_frame, text="QR Code", font=("Arial", 10, "bold"), bg="pink", padx=10, pady=10)
-        qr_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
+        # Configure button grid weights
+        for i in range(4):
+            button_grid.rowconfigure(i, weight=1)
+        button_grid.columnconfigure(0, weight=1)
+        button_grid.columnconfigure(1, weight=1)
         
-        # Initialize QR code label
-        self.qr_label = tk.Label(qr_frame, text="Generate QR Code first", font=("Arial", 10), 
-                                bg="white", width=30, height=10, relief="solid")
-        self.qr_label.pack(pady=10)
+        # Special buttons below the grid
+        special_frame = tk.Frame(button_frame, bg="pink")
+        special_frame.pack(fill=tk.X, pady=(10, 0))
         
-        # QR code info label
-        self.qr_info_label = tk.Label(qr_frame, text="", font=("Arial", 9), bg="pink", justify=tk.CENTER)
-        self.qr_info_label.pack(pady=5)
+        tk.Button(special_frame, text="⚠️ Check Inactive Students", font=("Arial", 9, "bold"), 
+                fg="white", bg="#ff6b6b", height=2,
+                command=self.check_inactive_students).pack(fill=tk.X, pady=2)
         
-        # Last update label - FIXED: This was in the wrong place
-        self.last_update_label = tk.Label(qr_frame, text="Last update: --", font=("Arial", 8), bg="pink", justify=tk.CENTER)
-        self.last_update_label.pack(pady=2)
+        tk.Button(special_frame, text="📧 Email Settings", font=("Arial", 9), 
+                fg="black", bg="lightgray", height=1,
+                command=self.configure_email_settings).pack(fill=tk.X, pady=2)
         
-        # Bottom Section - Student Records Treeview
-        bottom_frame = tk.Frame(self.root, bg="pink", padx=10, pady=10)
-        bottom_frame.grid(row=3, column=0, columnspan=2, sticky="nsew")
+        # ========== ROW 1: STATISTICS ==========
+        stats_frame = tk.LabelFrame(self.root, text="Section Statistics", font=("Arial", 10, "bold"), 
+                                bg="pink", padx=15, pady=10)
+        stats_frame.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=(0, 10))
+        
+        self.stats_label = tk.Label(stats_frame, text="Please select or type a section", 
+                                font=("Arial", 10), bg="pink", justify=tk.LEFT, anchor="w")
+        self.stats_label.pack(fill=tk.BOTH, expand=True)
+        
+        # ========== ROW 2: STUDENT RECORDS ==========
+        bottom_frame = tk.LabelFrame(self.root, text="Student Records", font=("Arial", 10, "bold"), 
+                                    bg="pink", padx=10, pady=10)
+        bottom_frame.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=10, pady=(0, 10))
+        
+        # Create a frame for treeview and scrollbar
+        tree_frame = tk.Frame(bottom_frame, bg="pink")
+        tree_frame.pack(fill=tk.BOTH, expand=True)
         
         # Treeview for student records
         columns = ('attendance_status', 'student_id', 'name', 'program', 'block', 'gsuite_account')
-        self.tree_view = ttk.Treeview(bottom_frame, columns=columns, show='headings', height=12)
-        self.tree_view.grid(row=0, column=0, sticky="nsew")
-
+        self.tree_view = ttk.Treeview(tree_frame, columns=columns, show='headings', height=15)
+        self.tree_view.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
         # Configure column headings and widths
         self.tree_view.heading('attendance_status', text='Status')
         self.tree_view.heading('student_id', text='Student ID')
@@ -165,25 +171,23 @@ class ProfessorApp:
         self.tree_view.heading('block', text='Block')
         self.tree_view.heading('gsuite_account', text='Gsuite Account')
         
-        # To adjust the sizes ng mga columns
-        self.tree_view.column('attendance_status', anchor=tk.CENTER, width=80)
-        self.tree_view.column('student_id', anchor=tk.CENTER, width=100)
-        self.tree_view.column('name', anchor=tk.W, width=150)
-        self.tree_view.column('program', anchor=tk.W, width=100)
-        self.tree_view.column('block', anchor=tk.CENTER, width=80)
-        self.tree_view.column('gsuite_account', anchor=tk.W, width=150)
-
+        # Column widths
+        self.tree_view.column('attendance_status', anchor=tk.CENTER, width=70)
+        self.tree_view.column('student_id', anchor=tk.CENTER, width=90)
+        self.tree_view.column('name', anchor=tk.W, width=140)
+        self.tree_view.column('program', anchor=tk.W, width=90)
+        self.tree_view.column('block', anchor=tk.CENTER, width=70)
+        self.tree_view.column('gsuite_account', anchor=tk.W, width=180)
+        
         # Add a scrollbar to the Treeview
-        scrollbar = ttk.Scrollbar(bottom_frame, orient=tk.VERTICAL, command=self.tree_view.yview)
+        scrollbar = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.tree_view.yview)
         self.tree_view.configure(yscrollcommand=scrollbar.set)
-        scrollbar.grid(row=0, column=1, sticky='ns')
-
-        # Configure grid weights for bottom frame
-        bottom_frame.columnconfigure(0, weight=1)
-        bottom_frame.rowconfigure(0, weight=1)
-
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Initialize
         self.load_sections()
         self.start_flask_server()
+        self.setup_treeview_bindings()
 
     def setup_treeview_bindings(self):
         """Setup bindings for treeview selection"""

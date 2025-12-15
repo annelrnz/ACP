@@ -39,8 +39,8 @@ def init_db():
     
     try:
         sample_students = [
-            ('24-02453', 'Franz Jacob Boñon', 'IT2104', 'B', 'Block 2', '24-02453@g.batstate-u.edu.ph'),
-            ('24-02686', 'Marianne Lorenzo', 'CPE405', 'A', 'Block 1', '24-02686@g.batstate-u.edu.ph'),
+            ('24-02453', 'Franz Jacob Boñon', 'BSIT', 'B', '2104', '24-02453@g.batstate-u.edu.ph'),
+            ('24-02686', 'Marianne Lorenzo', 'BSIT', 'A', '2104', '24-02686@g.batstate-u.edu.ph'),
         ]
         for student in sample_students:
             cursor.execute('''
@@ -50,7 +50,7 @@ def init_db():
             ''', student)
         
         conn.commit()
-        print("✅ Database initialized with sample data!")
+        print("✅ Database initialized with sample data")
     except:
         print("✅ Database initialized!")
     
