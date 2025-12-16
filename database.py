@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import sqlite3
 import os
 
@@ -36,6 +37,26 @@ def init_db():
             FOREIGN KEY (student_id) REFERENCES students (student_id)
         )
     ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS attendance_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            course_code TEXT NOT NULL,
+            section TEXT NOT NULL,
+            attendance_date DATE NOT NULL,
+            attendance_time TIME NOT NULL,
+            status TEXT DEFAULT 'Present',
+            notes TEXT,
+            FOREIGN KEY (student_id) REFERENCES students (student_id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_attendance_history 
+        ON attendance_history (student_id, attendance_date, course_code)
+    ''')
     
     try:
         sample_students = [
@@ -48,8 +69,30 @@ def init_db():
                 (student_id, name, course, section, block, gsuite) 
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', student)
+
+        sample_dates = [
+            (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'),
+            (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d'),
+            (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d'),
+        ]
+
+        for student_id, name in [('24-02453', 'Franz Jacob Boñon'), ('24-02686', 'Marianne Lorenzo')]:
+            for i, date in enumerate(sample_dates):
+                cursor.execute('''
+                    INSERT OR IGNORE INTO attendance_history 
+                    (student_id, name, course_code, section, attendance_date, attendance_time, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    student_id,
+                    name,
+                    'IT2104' if student_id == '24-02453' else 'CPE405',
+                    'B' if student_id == '24-02453' else 'A',
+                    date,
+                    f'0{i+8}:30:00',  # 08:30, 09:30, 10:30
+                    'Present'
+                ))
         
-        conn.commit()
+        conn.commit()  
         print("✅ Database initialized with sample data")
     except:
         print("✅ Database initialized!")

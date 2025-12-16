@@ -1,4 +1,4 @@
-
+# models.py
 import sqlite3
 from datetime import datetime
 from database import get_connection
@@ -121,12 +121,28 @@ class Attendance:
                 conn.close()
                 return False, "Attendance already recorded for today"
             
-            # Record attendance
+            # Record attendance in attendance_records table
             cursor.execute('''
                 INSERT INTO attendance_records 
                 (student_id, course_code, section, class_time, timestamp) 
                 VALUES (?, ?, ?, ?, datetime('now'))
             ''', (student_id, course_code, section, class_time))
+            
+            # Get student name for history
+            cursor.execute('SELECT name FROM students WHERE student_id = ?', (student_id,))
+            student = cursor.fetchone()
+            name = student[0] if student else student_id
+            
+            # Also record in attendance_history table
+            current_datetime = datetime.now()
+            attendance_date = current_datetime.strftime('%Y-%m-%d')
+            attendance_time = current_datetime.strftime('%H:%M:%S')
+            
+            cursor.execute('''
+                INSERT INTO attendance_history 
+                (student_id, name, course_code, section, attendance_date, attendance_time, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (student_id, name, course_code, section, attendance_date, attendance_time, 'Present'))
             
             conn.commit()
             conn.close()
@@ -197,4 +213,160 @@ class Attendance:
             return records
         except Exception as e:
             print(f"Error getting attendance records: {e}")
+            return []
+
+class AttendanceHistory:
+    @staticmethod
+    def record_attendance(student_id, name, course_code, section):
+        """Record detailed attendance with date and time"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            current_datetime = datetime.now()
+            attendance_date = current_datetime.strftime('%Y-%m-%d')
+            attendance_time = current_datetime.strftime('%H:%M:%S')
+            
+            cursor.execute('''
+                INSERT INTO attendance_history 
+                (student_id, name, course_code, section, attendance_date, attendance_time, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (student_id, name, course_code, section, attendance_date, attendance_time, 'Present'))
+            
+            conn.commit()
+            conn.close()
+            return True, "Attendance recorded in history!"
+        except Exception as e:
+            return False, f"Error recording attendance history: {str(e)}"
+    
+    @staticmethod
+    def get_student_attendance_history(student_id, course_code=None):
+        """Get detailed attendance history for a student"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            if course_code:
+                query = '''
+                    SELECT * FROM attendance_history 
+                    WHERE student_id = ? AND course_code = ?
+                    ORDER BY attendance_date DESC, attendance_time DESC
+                '''
+                params = (student_id, course_code)
+            else:
+                query = '''
+                    SELECT * FROM attendance_history 
+                    WHERE student_id = ?
+                    ORDER BY attendance_date DESC, attendance_time DESC
+                '''
+                params = (student_id,)
+            
+            cursor.execute(query, params)
+            records = cursor.fetchall()
+            conn.close()
+            
+            # Format the records
+            formatted_records = []
+            for record in records:
+                formatted_records.append({
+                    'id': record[0],
+                    'student_id': record[1],
+                    'name': record[2],
+                    'course_code': record[3],
+                    'section': record[4],
+                    'date': record[5],
+                    'time': record[6],
+                    'status': record[7],
+                    'notes': record[8]
+                })
+            
+            return formatted_records
+        except:
+            return []
+    
+    @staticmethod
+    def get_section_attendance_history(section, date=None, course_code=None):
+        """Get attendance history for a section"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            if date and course_code:
+                query = '''
+                    SELECT * FROM attendance_history 
+                    WHERE section = ? AND attendance_date = ? AND course_code = ?
+                    ORDER BY attendance_time ASC
+                '''
+                params = (section, date, course_code)
+            elif date:
+                query = '''
+                    SELECT * FROM attendance_history 
+                    WHERE section = ? AND attendance_date = ?
+                    ORDER BY attendance_time ASC
+                '''
+                params = (section, date)
+            elif course_code:
+                query = '''
+                    SELECT * FROM attendance_history 
+                    WHERE section = ? AND course_code = ?
+                    ORDER BY attendance_date DESC, attendance_time ASC
+                '''
+                params = (section, course_code)
+            else:
+                query = '''
+                    SELECT * FROM attendance_history 
+                    WHERE section = ?
+                    ORDER BY attendance_date DESC, attendance_time ASC
+                '''
+                params = (section,)
+            
+            cursor.execute(query, params)
+            records = cursor.fetchall()
+            conn.close()
+            
+            return records
+        except Exception as e:
+            print(f"Error getting section attendance history: {e}")
+            return []
+    
+    @staticmethod
+    def get_daily_attendance_report(date=None):
+        """Get daily attendance report"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            if date:
+                query = '''
+                    SELECT 
+                        section,
+                        course_code,
+                        COUNT(DISTINCT student_id) as total_students,
+                        COUNT(*) as total_attendances
+                    FROM attendance_history 
+                    WHERE attendance_date = ?
+                    GROUP BY section, course_code
+                    ORDER BY section, course_code
+                '''
+                params = (date,)
+            else:
+                query = '''
+                    SELECT 
+                        attendance_date,
+                        section,
+                        course_code,
+                        COUNT(DISTINCT student_id) as total_students,
+                        COUNT(*) as total_attendances
+                    FROM attendance_history 
+                    GROUP BY attendance_date, section, course_code
+                    ORDER BY attendance_date DESC, section, course_code
+                '''
+                params = ()
+            
+            cursor.execute(query, params)
+            records = cursor.fetchall()
+            conn.close()
+            
+            return records
+        except:
             return []

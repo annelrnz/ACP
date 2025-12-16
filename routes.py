@@ -1,6 +1,6 @@
-from datetime import datetime  # FIXED: Use datetime instead of importing datetime module
+from datetime import datetime
 from flask import render_template, request, jsonify
-from models import Student, Attendance 
+from models import Student, Attendance, AttendanceHistory 
 
 def setup_routes(app):
     
@@ -11,20 +11,29 @@ def setup_routes(app):
     @app.route('/check_student', methods=['POST'])
     def check_student():
         """Check if student is registered"""
-        data = request.get_json()
-        student_id = data.get('student_id')
-        
-        student = Student.get_student_by_id(student_id)
-        if student:
-            return jsonify({
-                'registered': True,
-                'name': student[2],  # name is at index 2
-                'student_id': student[1],
-                'course': student[3],
-                'section': student[4]
-            })
-        else:
-            return jsonify({'registered': False})
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'registered': False, 'message': 'Invalid JSON data'})
+            
+            student_id = data.get('student_id')
+            
+            if not student_id:
+                return jsonify({'registered': False, 'message': 'Student ID is required'})
+            
+            student = Student.get_student_by_id(student_id)
+            if student:
+                return jsonify({
+                    'registered': True,
+                    'name': student[2] if len(student) > 2 else 'Unknown',
+                    'student_id': student[1] if len(student) > 1 else student_id,
+                    'course': student[3] if len(student) > 3 else 'Unknown',
+                    'section': student[4] if len(student) > 4 else 'Unknown'
+                })
+            else:
+                return jsonify({'registered': False, 'message': 'Student not found'})
+        except Exception as e:
+            return jsonify({'registered': False, 'message': f'Error: {str(e)}'})
     
     @app.route('/register', methods=['POST'])
     def register_student():
@@ -53,9 +62,12 @@ def setup_routes(app):
     
     @app.route('/record_attendance', methods=['POST'])
     def record_attendance():
-        """Record attendance for a student"""
+        """Record attendance for a student - JSON API endpoint"""
         try:
             data = request.get_json()
+            if not data:
+                return jsonify({'success': False, 'message': 'Invalid JSON data'})
+            
             student_id = data.get('student_id')
             course_code = data.get('course_code')
             class_time = data.get('class_time')
@@ -68,7 +80,7 @@ def setup_routes(app):
             if not student:
                 return jsonify({'success': False, 'message': 'Student not found'})
             
-            section = student[4]  # section is at index 4
+            section = student[4] if len(student) > 4 else 'Unknown'
             
             # Mark attendance
             success, message = Attendance.mark_attendance(student_id, course_code, section, class_time)
@@ -91,6 +103,7 @@ def setup_routes(app):
                     body {{ font-family: Arial, sans-serif; margin: 40px; }}
                     .container {{ max-width: 500px; margin: 0 auto; text-align: center; }}
                     .info {{ background: #f0f0f0; padding: 20px; border-radius: 10px; margin: 20px 0; }}
+                    input, button {{ padding: 10px; margin: 5px; }}
                 </style>
             </head>
             <body>
@@ -103,20 +116,75 @@ def setup_routes(app):
                     </div>
                     <h3>Student Attendance Portal</h3>
                     <p>Please log in to mark your attendance</p>
-                    <form action="/mark_attendance" method="POST">
-                        <input type="hidden" name="course_code" value="{course_code}">
-                        <input type="hidden" name="section" value="{section}">
-                        <input type="hidden" name="class_time" value="{class_time}">
-                        <input type="text" name="student_id" placeholder="Enter Student ID" required>
-                        <button type="submit">Mark Attendance</button>
-                    </form>
+                    <input type="text" id="student_id" placeholder="Enter Student ID">
+                    <button onclick="markAttendance()">Mark Attendance</button>
+                    <div id="result" style="margin-top: 20px;"></div>
                 </div>
+                
+                <script>
+                    function markAttendance() {{
+                        const studentId = document.getElementById('student_id').value;
+                        if (!studentId) {{
+                            alert('Please enter your Student ID');
+                            return;
+                        }}
+                        
+                        // First check if student exists
+                        fetch('/check_student', {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            body: JSON.stringify({{ student_id: studentId }})
+                        }})
+                        .then(response => response.json())
+                        .then(data => {{
+                            if (data.registered) {{
+                                // Student exists, record attendance
+                                fetch('/record_attendance', {{
+                                    method: 'POST',
+                                    headers: {{ 'Content-Type': 'application/json' }},
+                                    body: JSON.stringify({{
+                                        student_id: studentId,
+                                        course_code: '{course_code}',
+                                        class_time: '{class_time}'
+                                    }})
+                                }})
+                                .then(response => response.json())
+                                .then(attendanceData => {{
+                                    if (attendanceData.success) {{
+                                        document.getElementById('result').innerHTML = 
+                                            `<div style="color: green; font-size: 18px;">
+                                                ✅ Attendance recorded successfully!<br>
+                                                Student: ${{data.name}}<br>
+                                                Section: ${{data.section}}<br>
+                                                Time: {datetime.now().strftime('%H:%M:%S')}
+                                            </div>`;
+                                    }} else {{
+                                        document.getElementById('result').innerHTML = 
+                                            `<div style="color: red;">❌ ${{attendanceData.message}}</div>`;
+                                    }}
+                                }})
+                                .catch(error => {{
+                                    document.getElementById('result').innerHTML = 
+                                        `<div style="color: red;">❌ Error: ${{error}}</div>`;
+                                }});
+                            }} else {{
+                                document.getElementById('result').innerHTML = 
+                                    `<div style="color: red;">❌ Student not found. Please contact your professor.</div>`;
+                            }}
+                        }})
+                        .catch(error => {{
+                            document.getElementById('result').innerHTML = 
+                                `<div style="color: red;">❌ Error: ${{error}}</div>`;
+                        }});
+                    }}
+                </script>
             </body>
         </html>
         """
     
     @app.route('/mark_attendance', methods=['POST'])
     def mark_attendance():
+        """HTML form endpoint for attendance marking"""
         student_id = request.form.get('student_id')
         course_code = request.form.get('course_code')
         section = request.form.get('section')
@@ -131,11 +199,23 @@ def setup_routes(app):
         if student_section != section:
             return f"Error: You are registered in section {student_section}, but this QR code is for section {section}", 400
     
-        # Mark attendance
         success, message = Attendance.mark_attendance(student_id, course_code, section, class_time)
         
         if success:
-            student_name = student[2] if len(student) > 2 else "Unknown"  # name is at index 2
+            student_name = student[2] if len(student) > 2 else "Unknown"
+            
+            # Get the exact timestamp from attendance_history
+            history = AttendanceHistory.get_student_attendance_history(student_id, course_code)
+            exact_timestamp = ""
+            if history and len(history) > 0:
+                # Get the most recent attendance
+                latest = history[0]
+                exact_date = latest['date']
+                exact_time = latest['time']
+                exact_timestamp = f"{exact_date} {exact_time}"
+            else:
+                exact_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
             return f"""
             <html>
                 <head>
@@ -154,11 +234,37 @@ def setup_routes(app):
                         <p><strong>Course:</strong> {course_code}</p>
                         <p><strong>Section:</strong> {section}</p>
                         <p><strong>Time:</strong> {class_time}</p>
-                        <p><strong>Timestamp:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                        <p><strong>Timestamp:</strong> {exact_timestamp}</p>
                     </div>
+                    <p>Attendance has been recorded in your history.</p>
                     <p>You can close this window now.</p>
                 </body>
             </html>
             """
         else:
             return f"Error: {message}", 400
+    
+    @app.route('/student_history')
+    def student_history_page():
+        """Page for students to view their own attendance history"""
+        pass
+    
+    @app.route('/get_student_history', methods=['GET'])
+    def get_student_history():
+        """Get attendance history for a student"""
+        pass
+    
+    @app.route('/section_history')
+    def section_history_page():
+        """Page for professors to view section attendance history"""
+        pass
+    
+    @app.route('/get_section_history', methods=['GET'])
+    def get_section_history():
+        """Get attendance history for a section"""
+        pass
+    
+    @app.route('/export_section_history', methods=['GET'])
+    def export_section_history():
+        """Export section history to CSV"""
+        pass

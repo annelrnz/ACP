@@ -1,7 +1,7 @@
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
-from models import Student, Attendance
+from models import Student, Attendance, AttendanceHistory
 import qrcode
 import os
 import sqlite3
@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import csv
 from app import app 
 
 class ProfessorApp:
@@ -135,6 +136,10 @@ class ProfessorApp:
         tk.Button(special_frame, text="⚠️ Check Inactive Students", font=("Arial", 9, "bold"), 
                 fg="white", bg="#ff6b6b", height=2,
                 command=self.check_inactive_students).pack(fill=tk.X, pady=2)
+        
+        tk.Button(special_frame, text="📊 Attendance History", font=("Arial", 9, "bold"), 
+                fg="white", bg="#3498db", height=2,
+                command=self.view_attendance_history).pack(fill=tk.X, pady=2)
         
         tk.Button(special_frame, text="📧 Email Settings", font=("Arial", 9), 
                 fg="black", bg="lightgray", height=1,
@@ -536,7 +541,284 @@ class ProfessorApp:
             return None
         except:
             return None
+
+    def view_attendance_history(self):
+        """View detailed attendance history"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Attendance History")
+        dialog.geometry("900x600")
+        dialog.transient(self.root)
+        dialog.grab_set()
     
+        # Center the dialog
+        dialog.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() - dialog.winfo_width()) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - dialog.winfo_height()) // 2
+        dialog.geometry(f"+{x}+{y}")
+    
+        # Title
+        tk.Label(dialog, text="📊 ATTENDANCE HISTORY", 
+            font=("Arial", 14, "bold")).pack(pady=10)
+    
+        # Filter frame
+        filter_frame = tk.Frame(dialog)
+        filter_frame.pack(fill=tk.X, padx=20, pady=10)
+    
+        tk.Label(filter_frame, text="Filter by:", font=("Arial", 10)).grid(row=0, column=0, padx=5)
+    
+        # Date filter
+        tk.Label(filter_frame, text="Date:", font=("Arial", 9)).grid(row=0, column=1, padx=5)
+        date_var = tk.StringVar()
+        date_entry = tk.Entry(filter_frame, textvariable=date_var, width=12, font=("Arial", 9))
+        date_entry.grid(row=0, column=2, padx=5)
+        date_entry.insert(0, datetime.now().strftime('%Y-%m-%d'))
+        
+        # Section filter
+        tk.Label(filter_frame, text="Section:", font=("Arial", 9)).grid(row=0, column=3, padx=5)
+        section_var = tk.StringVar(value=self.current_section.get())
+        section_combo = ttk.Combobox(filter_frame, textvariable=section_var, width=10, font=("Arial", 9))
+        section_combo.grid(row=0, column=4, padx=5)
+        section_combo['values'] = Student.get_all_sections()
+        
+        # Course filter
+        tk.Label(filter_frame, text="Course:", font=("Arial", 9)).grid(row=0, column=5, padx=5)
+        course_var = tk.StringVar()
+        course_combo = ttk.Combobox(filter_frame, textvariable=course_var, width=15, font=("Arial", 9))
+        course_combo.grid(row=0, column=6, padx=5)
+        course_combo['values'] = self.get_all_courses()
+        
+        # Buttons frame
+        button_frame = tk.Frame(filter_frame)
+        button_frame.grid(row=0, column=7, padx=10)
+    
+        def load_history():
+            date = date_var.get().strip()
+            section = section_var.get().strip()
+            course = course_var.get().strip()
+        
+            # Validate date format
+            if date:
+                try:
+                    datetime.strptime(date, '%Y-%m-%d')
+                except ValueError:
+                    messagebox.showerror("Error", "Invalid date format! Use YYYY-MM-DD")
+                    return
+        
+            #attendance history
+            if date and section and course:
+                records = AttendanceHistory.get_section_attendance_history(section, date, course)
+            elif date and section:
+                records = AttendanceHistory.get_section_attendance_history(section, date)
+            elif section and course:
+                records = AttendanceHistory.get_section_attendance_history(section, course_code=course)
+            elif section:
+                records = AttendanceHistory.get_section_attendance_history(section)
+            else:
+                messagebox.showwarning("Warning", "Please select at least a section!")
+                return
+        
+            # Clear treeview
+            for item in tree.get_children():
+                tree.delete(item)
+        
+            # Add records to treeview
+            for record in records:
+                tree.insert('', 'end', values=(
+                    record[5],  # date
+                    record[6],  # time
+                    record[1],  # student_id
+                    record[2],  # name
+                    record[3],  # course_code
+                    record[4],  # section
+                    record[7]   # status
+                ))
+        
+            # Update count
+            count_label.config(text=f"Total Records: {len(records)}")
+        
+        tk.Button(button_frame, text="Load History", font=("Arial", 9), 
+                 bg="#2ecc71", fg="white", command=load_history).pack(side=tk.LEFT, padx=2)
+        
+        tk.Button(button_frame, text="Daily Report", font=("Arial", 9), 
+                 bg="#9b59b6", fg="white", command=self.show_daily_report).pack(side=tk.LEFT, padx=2)
+        
+        tk.Button(button_frame, text="Export CSV", font=("Arial", 9), 
+                 bg="#f39c12", fg="white", command=lambda: self.export_attendance_csv(
+                     date_var.get(), section_var.get(), course_var.get())).pack(side=tk.LEFT, padx=2)
+        
+        # Treeview frame
+        tree_frame = tk.Frame(dialog)
+        tree_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 10))
+        
+        # Create treeview
+        columns = ('date', 'time', 'student_id', 'name', 'course', 'section', 'status')
+        tree = ttk.Treeview(tree_frame, columns=columns, show='headings', height=15)
+        
+        # Configure columns
+        tree.heading('date', text='Date')
+        tree.heading('time', text='Time')
+        tree.heading('student_id', text='Student ID')
+        tree.heading('name', text='Name')
+        tree.heading('course', text='Course')
+        tree.heading('section', text='Section')
+        tree.heading('status', text='Status')
+        
+        tree.column('date', width=90)
+        tree.column('time', width=80)
+        tree.column('student_id', width=90)
+        tree.column('name', width=120)
+        tree.column('course', width=100)
+        tree.column('section', width=70)
+        tree.column('status', width=70)
+        
+        # Add scrollbars
+        v_scrollbar = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=tree.yview)
+        h_scrollbar = ttk.Scrollbar(tree_frame, orient=tk.HORIZONTAL, command=tree.xview)
+        tree.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
+        
+        # Grid layout
+        tree.grid(row=0, column=0, sticky='nsew')
+        v_scrollbar.grid(row=0, column=1, sticky='ns')
+        h_scrollbar.grid(row=1, column=0, sticky='ew')
+        
+        tree_frame.columnconfigure(0, weight=1)
+        tree_frame.rowconfigure(0, weight=1)
+        
+        # Count label
+        count_label = tk.Label(dialog, text="Total Records: 0", font=("Arial", 9))
+        count_label.pack(pady=(0, 10))
+        
+        # Load initial data
+        load_history()
+
+    def show_daily_report(self):
+        """Show daily attendance report"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Daily Attendance Report")
+        dialog.geometry("700x400")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Center the dialog
+        dialog.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() - dialog.winfo_width()) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - dialog.winfo_height()) // 2
+        dialog.geometry(f"+{x}+{y}")
+        
+        # Title
+        tk.Label(dialog, text="📅 DAILY ATTENDANCE REPORT", 
+                font=("Arial", 14, "bold")).pack(pady=10)
+        
+        # Date filter
+        filter_frame = tk.Frame(dialog)
+        filter_frame.pack(pady=10)
+        
+        tk.Label(filter_frame, text="Date (YYYY-MM-DD):", font=("Arial", 10)).pack(side=tk.LEFT, padx=5)
+        date_var = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
+        date_entry = tk.Entry(filter_frame, textvariable=date_var, width=12, font=("Arial", 10))
+        date_entry.pack(side=tk.LEFT, padx=5)
+        
+        def load_report():
+            date = date_var.get().strip()
+            
+            # Validate date
+            if not date:
+                messagebox.showerror("Error", "Please enter a date!")
+                return
+            
+            try:
+                datetime.strptime(date, '%Y-%m-%d')
+            except ValueError:
+                messagebox.showerror("Error", "Invalid date format! Use YYYY-MM-DD")
+                return
+            
+            # Get report
+            report = AttendanceHistory.get_daily_attendance_report(date)
+            
+            # Clear text widget
+            text_widget.delete(1.0, tk.END)
+            
+            if not report:
+                text_widget.insert(tk.END, f"No attendance records found for {date}")
+                return
+            
+            # Format report
+            text_widget.insert(tk.END, f"ATTENDANCE REPORT - {date}\n")
+            text_widget.insert(tk.END, "=" * 50 + "\n\n")
+            
+            for record in report:
+                section, course, total_students, total_attendances = record
+                attendance_rate = (total_attendances / total_students * 100) if total_students > 0 else 0
+                
+                text_widget.insert(tk.END, f"Section: {section} | Course: {course}\n")
+                text_widget.insert(tk.END, f"  Total Students: {total_students}\n")
+                text_widget.insert(tk.END, f"  Total Attendances: {total_attendances}\n")
+                text_widget.insert(tk.END, f"  Attendance Rate: {attendance_rate:.1f}%\n")
+                text_widget.insert(tk.END, "-" * 40 + "\n")
+        
+        tk.Button(filter_frame, text="Load Report", font=("Arial", 10), 
+                 bg="#2ecc71", fg="white", command=load_report).pack(side=tk.LEFT, padx=10)
+        
+        # Text widget for report
+        text_frame = tk.Frame(dialog)
+        text_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+        
+        text_widget = tk.Text(text_frame, font=("Courier", 10), wrap=tk.WORD)
+        scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=text_widget.yview)
+        text_widget.configure(yscrollcommand=scrollbar.set)
+        
+        text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Load initial report
+        load_report()
+
+    def export_attendance_csv(self, date, section, course):
+        """Export attendance data to CSV"""
+        # Get filtered data
+        if date and section and course:
+            records = AttendanceHistory.get_section_attendance_history(section, date, course)
+            filename = f"attendance_{section}_{course}_{date}.csv"
+        elif date and section:
+            records = AttendanceHistory.get_section_attendance_history(section, date)
+            filename = f"attendance_{section}_{date}.csv"
+        elif section and course:
+            records = AttendanceHistory.get_section_attendance_history(section, course_code=course)
+            filename = f"attendance_{section}_{course}.csv"
+        elif section:
+            records = AttendanceHistory.get_section_attendance_history(section)
+            filename = f"attendance_{section}.csv"
+        else:
+            messagebox.showwarning("Warning", "Please select at least a section!")
+            return
+    
+        if not records:
+            messagebox.showinfo("No Data", "No attendance records to export!")
+            return
+    
+        # Save to CSV
+        try:
+            with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
+                # Write header
+                writer.writerow(['Date', 'Time', 'Student ID', 'Name', 'Course', 'Section', 'Status'])
+                
+                # Write data
+                for record in records:
+                    writer.writerow([
+                        record[5],  # date
+                        record[6],  # time
+                        record[1],  # student_id
+                        record[2],  # name
+                        record[3],  # course_code
+                        record[4],  # section
+                        record[7]   # status
+                    ])
+            
+            messagebox.showinfo("Success", f"Attendance data exported to {filename}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to export CSV: {str(e)}")
+
     def show_inactive_students_dialog(self, inactive_students, section):
         """Show dialog with inactive students and option to send warnings"""
         dialog = tk.Toplevel(self.root)
@@ -867,7 +1149,7 @@ Attendify System
     def open_browser(self):
         """Open web browser to the Flask app"""
         try:
-            webbrowser.open('http://localhost:5000')
+            webbrowser.open("http://172.16.159.159:5000")
             print("🌐 Browser opened to http://localhost:5000")
         except Exception as e:
             print(f"❌ Could not open browser: {e}")
@@ -917,13 +1199,13 @@ Attendify System
             course_title = course_title_entry.get().strip()
             class_time = class_time_entry.get().strip()
             section = self.current_section.get().strip()
-            
+    
             if not all([course_code, course_title, class_time, section]):
                 messagebox.showerror("Error", "Please fill in all fields!")
                 return
             
-            # Generate QR code with proper URL that includes parameters
-            qr_url = "http://192.168.1.6:5000"
+            # Generate QR code with proper URL
+            qr_url = "http://172.16.159.159:5000"
             qr = qrcode.QRCode(version=1, box_size=10, border=5)
             qr.add_data(qr_url)
             qr.make(fit=True)
@@ -1032,13 +1314,13 @@ Attendify System
             url_label.pack(pady=5)
             
             url_link = tk.Label(qr_display_frame, 
-                               text= "http://192.168.1.6:5000",
+                               text= "Attendify: Mark your Presence",
                                font=("Arial", 9, "bold"), fg="blue", 
                                bg="pink", cursor="hand2")
             url_link.pack(pady=5)
             
             def open_url(event):
-                webbrowser.open('http://192.168.1.6:5000')
+                webbrowser.open()
             
             url_link.bind("<Button-1>", open_url)
             
