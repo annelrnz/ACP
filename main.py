@@ -145,7 +145,6 @@ class ProfessorApp:
                 fg="black", bg="lightgray", height=1,
                 command=self.configure_email_settings).pack(fill=tk.X, pady=2)
         
-        # ========== ROW 1: STATISTICS ==========
         stats_frame = tk.LabelFrame(self.root, text="Section Statistics", font=("Arial", 10, "bold"), 
                                 bg="pink", padx=15, pady=10)
         stats_frame.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=(0, 10))

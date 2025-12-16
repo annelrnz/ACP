@@ -65,7 +65,7 @@ def init_db():
         ]
         for student in sample_students:
             cursor.execute('''
-                INSERT OR IGNORE INTO students 
+                INSERT INTO students 
                 (student_id, name, course, section, block, gsuite) 
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', student)
@@ -85,10 +85,10 @@ def init_db():
                 ''', (
                     student_id,
                     name,
-                    'IT2104' if student_id == '24-02453' else 'CPE405',
+                    'IT2104' if student_id == '24-02453' else 'BSIT',
                     'B' if student_id == '24-02453' else 'A',
                     date,
-                    f'0{i+8}:30:00',  # 08:30, 09:30, 10:30
+                    f'0{i+8}:30:00',
                     'Present'
                 ))
         
